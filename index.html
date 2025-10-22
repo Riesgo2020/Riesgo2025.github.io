@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Diferencias de Tiempo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #3498db;
+            --secondary: #2c3e50;
+            --success: #2ecc71;
+            --light: #f8f9fa;
+            --dark: #343a40;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding-bottom: 40px;
+        }
+        
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: none;
+            margin-bottom: 20px;
+        }
+        
+        .card-header {
+            background-color: var(--secondary);
+            color: white;
+            border-radius: 10px 10px 0 0 !important;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-success {
+            background-color: var(--success);
+            border-color: var(--success);
+        }
+        
+        .table th {
+            background-color: var(--secondary);
+            color: white;
+        }
+        
+        .time-input {
+            max-width: 120px;
+        }
+        
+        .action-buttons .btn {
+            margin-right: 5px;
+        }
+        
+        .totals-section {
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .hero-section {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 30px 0;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .invalid-input {
+            border-color: #dc3545 !important;
+            box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+        }
+        
+        .valid-input {
+            border-color: #28a745 !important;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+        
+        .highlight-row {
+            background-color: rgba(52, 152, 219, 0.1) !important;
+        }
+        
+        .file-upload-area {
+            border: 2px dashed #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .file-upload-area:hover {
+            border-color: var(--primary);
+            background-color: #e8f4fc;
+        }
+        
+        .file-upload-area.dragover {
+            border-color: var(--success);
+            background-color: #e8f6f3;
+        }
+        
+        .import-preview {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+        
+        .paste-area {
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            background-color: #e8f4fc;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .paste-area:hover {
+            background-color: #d4edfa;
+        }
+        
+        .paste-area.dragover {
+            border-color: var(--success);
+            background-color: #e8f6f3;
+        }
+        
+        .tab-content {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <!-- Header -->
+        <div class="hero-section text-center">
+            <h1 class="display-4"><i class="fas fa-clock me-3"></i>Calculadora de Diferencias de Tiempo</h1>
+            <p class="lead">Calcula automáticamente la duración entre horas, incluso si cruzan la medianoche</p>
+        </div>
+
+        <!-- Data Input Methods -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <span>Cargar Datos</span>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="dataInputTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="paste-tab" data-bs-toggle="tab" data-bs-target="#paste" type="button" role="tab">
+                            <i class="fas fa-paste me-2"></i>Pegar desde Excel
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="import-tab" data-bs-toggle="tab" data-bs-target="#import" type="button" role="tab">
+                            <i class="fas fa-file-import me-2"></i>Importar Archivo
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual" type="button" role="tab">
+                            <i class="fas fa-keyboard me-2"></i>Ingreso Manual
+                        </button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="dataInputTabsContent">
+                    <!-- Pegar desde Excel -->
+                    <div class="tab-pane fade show active" id="paste" role="tabpanel">
+                        <div class="paste-area" id="pasteArea">
+                            <div class="mb-3">
+                                <i class="fas fa-paste fa-3x text-primary mb-3"></i>
+                                <h5>Pega datos desde Excel (Ctrl+V)</h5>
+                                <p class="text-muted">Copia dos columnas desde Excel y pégalas aquí</p>
+                            </div>
+                            <textarea class="form-control" id="pasteInput" rows="5" placeholder="Pega aquí los datos copiados desde Excel..."></textarea>
+                            <div class="mt-3">
+                                <button class="btn btn-primary" id="processPasteBtn">
+                                    <i class="fas fa-cogs me-2"></i>Procesar Datos Pegados
+                                </button>
+                                <button class="btn btn-outline-secondary" id="clearPasteBtn">
+                                    <i class="fas fa-times me-2"></i>Limpiar
+                                </button>
+                            </div>
+                        </div>
+                        <div class="alert alert-info">
+                            <small><i class="fas fa-info-circle me-1"></i>Formato esperado: Dos columnas (Hora Inicio y Hora Fin) separadas por tabulaciones</small>
+                        </div>
+                    </div>
+                    
+                    <!-- Importar Archivo -->
+                    <div class="tab-pane fade" id="import" role="tabpanel">
+                        <div class="file-upload-area" id="fileUploadArea">
+                            <div class="mb-3">
+                                <i class="fas fa-file-excel fa-3x text-success mb-3"></i>
+                                <h5>Arrastra tu archivo Excel aquí o haz clic para seleccionar</h5>
+                                <p class="text-muted">Formatos soportados: .xlsx, .xls, .csv</p>
+                            </div>
+                            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display: none;">
+                            <button class="btn btn-primary" id="selectFileBtn">
+                                <i class="fas fa-folder-open me-2"></i>Seleccionar Archivo
+                            </button>
+                        </div>
+                        
+                        <div class="import-preview" id="importPreview" style="display: none;">
+                            <h6>Vista previa de los datos importados:</h6>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Hora Inicio</th>
+                                        <th>Hora Fin</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="previewTableBody">
+                                </tbody>
+                            </table>
+                            <button class="btn btn-success mt-2" id="confirmImportBtn">
+                                <i class="fas fa-check me-2"></i>Confirmar Importación
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Ingreso Manual -->
+                    <div class="tab-pane fade" id="manual" role="tabpanel">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>Usa la tabla de abajo para ingresar datos manualmente
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Section -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Tabla de Datos</span>
+                <div class="action-buttons">
+                    <button class="btn btn-sm btn-success" id="addRowBtn">
+                        <i class="fas fa-plus me-1"></i>Agregar Fila
+                    </button>
+                    <button class="btn btn-sm btn-primary" id="calculateBtn">
+                        <i class="fas fa-calculator me-1"></i>Calcular Todo
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <small><i class="fas fa-info-circle me-1"></i>Formatos aceptados: HH:MM, HH:MM:SS, H:MM, H:MM:SS</small>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover" id="timeTable">
+                        <thead>
+                            <tr>
+                                <th width="5%">N°</th>
+                                <th width="25%">Hora Inicio</th>
+                                <th width="25%">Hora Fin</th>
+                                <th width="20%">Diferencia (hh:mm)</th>
+                                <th width="15%">Diferencia (min)</th>
+                                <th width="10%">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tableBody">
+                            <!-- Las filas se agregarán aquí dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <button class="btn btn-success me-2" id="exportExcelBtn">
+                    <i class="fas fa-file-excel me-1"></i>Exportar a Excel
+                </button>
+                <button class="btn btn-info me-2" id="exportCSVBtn">
+                    <i class="fas fa-file-csv me-1"></i>Exportar a CSV
+                </button>
+                <button class="btn btn-danger" id="clearBtn">
+                    <i class="fas fa-trash me-1"></i>Limpiar Todo
+                </button>
+            </div>
+        </div>
+
+        <!-- Totals Section -->
+        <div class="totals-section">
+            <h4>Resumen de Resultados</h4>
+            <div class="row">
+                <div class="col-md-4">
+                    <p><strong>Cantidad total de registros:</strong> <span id="summaryTotalRecords">0</span></p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Total acumulado:</strong> <span id="summaryTotalDuration">00:00</span> horas</p>
+                </div>
+                <div class="col-md-4">
+                    <p><strong>Total en minutos:</strong> <span id="summaryTotalMinutes">0</span> minutos</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Variables globales
+            let rowCount = 0;
+            let totalDurationMinutes = 0;
+            let importedData = [];
+            const tableBody = document.getElementById('tableBody');
+            const fileInput = document.getElementById('fileInput');
+            const fileUploadArea = document.getElementById('fileUploadArea');
+            const selectFileBtn = document.getElementById('selectFileBtn');
+            const importPreview = document.getElementById('importPreview');
+            const previewTableBody = document.getElementById('previewTableBody');
+            const confirmImportBtn = document.getElementById('confirmImportBtn');
+            const pasteInput = document.getElementById('pasteInput');
+            const processPasteBtn = document.getElementById('processPasteBtn');
+            const clearPasteBtn = document.getElementById('clearPasteBtn');
+            const pasteArea = document.getElementById('pasteArea');
+            
+            // Inicializar con una fila vacía
+            addNewRow();
+            
+            // Event Listeners
+            document.getElementById('addRowBtn').addEventListener('click', addNewRow);
+            document.getElementById('calculateBtn').addEventListener('click', calculateAll);
+            document.getElementById('exportExcelBtn').addEventListener('click', exportToExcel);
+            document.getElementById('exportCSVBtn').addEventListener('click', exportToCSV);
+            document.getElementById('clearBtn').addEventListener('click', clearAll);
+            
+            // Event listeners para importación de archivos
+            selectFileBtn.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileImport);
+            confirmImportBtn.addEventListener('click', confirmImport);
+            
+            // Event listeners para pegado desde Excel
+            processPasteBtn.addEventListener('click', processPastedData);
+            clearPasteBtn.addEventListener('click', () => pasteInput.value = '');
+            
+            // Permitir pegar directamente en el área
+            pasteArea.addEventListener('paste', (e) => {
+                // Permitir que el pegado ocurra normalmente
+                setTimeout(() => {
+                    processPastedData();
+                }, 100);
+            });
+            
+            // Drag and drop functionality para archivos
+            fileUploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileUploadArea.classList.add('dragover');
+            });
+            
+            fileUploadArea.addEventListener('dragleave', () => {
+                fileUploadArea.classList.remove('dragover');
+            });
+            
+            fileUploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileUploadArea.classList.remove('dragover');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    fileInput.files = files;
+                    handleFileImport({ target: fileInput });
+                }
+            });
+            
+            // Función para procesar datos pegados desde Excel
+            function processPastedData() {
+                const pastedText = pasteInput.value.trim();
+                if (!pastedText) {
+                    alert('Por favor, pega algunos datos primero.');
+                    return;
+                }
+                
+                const lines = pastedText.split('\n');
+                const data = [];
+                
+                lines.forEach(line => {
+                    const trimmedLine = line.trim();
+                    if (trimmedLine) {
+                        // Dividir por tabulaciones o múltiples espacios
+                        const values = trimmedLine.split(/\t|\s\s+/).filter(val => val.trim() !== '');
+                        if (values.length >= 2) {
+                            data.push({
+                                start: formatExcelTime(values[0]),
+                                end: formatExcelTime(values[1])
+                            });
+                        }
+                    }
+                });
+                
+                if (data.length === 0) {
+                    alert('No se encontraron datos válidos. Asegúrate de copiar dos columnas desde Excel.');
+                    return;
+                }
+                
+                // Limpiar tabla actual
+                tableBody.innerHTML = '';
+                rowCount = 0;
+                
+                // Agregar datos pegados
+                data.forEach(row => {
+                    addNewRow();
+                    const currentRow = document.getElementById(`row-${rowCount}`);
+                    const startInput = currentRow.querySelector('.start-time');
+                    const endInput = currentRow.querySelector('.end-time');
+                    
+                    startInput.value = row.start;
+                    endInput.value = row.end;
+                    
+                    // Calcular automáticamente
+                    calculateRow(rowCount);
+                });
+                
+                // Limpiar área de pegado
+                pasteInput.value = '';
+                
+                // Cambiar a pestaña manual para ver resultados
+                document.getElementById('manual-tab').click();
+                
+                alert(`Se procesaron ${data.length} registros correctamente.`);
+            }
+            
+            // Función para manejar la importación de archivos
+            function handleFileImport(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        
+                        // Obtener la primera hoja
+                        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        
+                        // Filtrar filas vacías y procesar datos
+                        importedData = jsonData
+                            .filter(row => row.length >= 2 && row[0] && row[1])
+                            .map(row => ({
+                                start: formatExcelTime(row[0]),
+                                end: formatExcelTime(row[1])
+                            }));
+                        
+                        // Mostrar vista previa
+                        showImportPreview();
+                        
+                    } catch (error) {
+                        alert('Error al leer el archivo: ' + error.message);
+                    }
+                };
+                
+                reader.onerror = function() {
+                    alert('Error al leer el archivo');
+                };
+                
+                reader.readAsArrayBuffer(file);
+            }
+            
+            // Función para formatear tiempo de Excel
+            function formatExcelTime(value) {
+                if (typeof value === 'number') {
+                    // Si es un número de Excel (fracción de día)
+                    const totalSeconds = Math.round(value * 24 * 60 * 60);
+                    const hours = Math.floor(totalSeconds / 3600);
+                    const minutes = Math.floor((totalSeconds % 3600) / 60);
+                    const seconds = totalSeconds % 60;
+                    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                } else if (typeof value === 'string') {
+                    // Limpiar y formatear el string
+                    return value.toString().trim();
+                } else if (value instanceof Date) {
+                    // Si es un objeto Date
+                    const hours = value.getHours();
+                    const minutes = value.getMinutes();
+                    const seconds = value.getSeconds();
+                    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }
+                return value ? value.toString() : '';
+            }
+            
+            // Función para mostrar vista previa de importación
+            function showImportPreview() {
+                previewTableBody.innerHTML = '';
+                
+                // Mostrar máximo 5 filas en la vista previa
+                const previewData = importedData.slice(0, 5);
+                
+                previewData.forEach((row, index) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${row.start}</td>
+                        <td>${row.end}</td>
+                    `;
+                    previewTableBody.appendChild(tr);
+                });
+                
+                if (importedData.length > 5) {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td colspan="2" class="text-center text-muted">
+                            ... y ${importedData.length - 5} filas más
+                        </td>
+                    `;
+                    previewTableBody.appendChild(tr);
+                }
+                
+                importPreview.style.display = 'block';
+            }
+            
+            // Función para confirmar la importación
+            function confirmImport() {
+                // Limpiar tabla actual
+                tableBody.innerHTML = '';
+                rowCount = 0;
+                
+                // Agregar datos importados
+                importedData.forEach(row => {
+                    addNewRow();
+                    const currentRow = document.getElementById(`row-${rowCount}`);
+                    const startInput = currentRow.querySelector('.start-time');
+                    const endInput = currentRow.querySelector('.end-time');
+                    
+                    startInput.value = row.start;
+                    endInput.value = row.end;
+                    
+                    // Calcular automáticamente
+                    calculateRow(rowCount);
+                });
+                
+                // Ocultar vista previa y resetear file input
+                importPreview.style.display = 'none';
+                fileInput.value = '';
+                
+                // Cambiar a pestaña manual para ver resultados
+                document.getElementById('manual-tab').click();
+                
+                alert(`Se importaron ${importedData.length} registros correctamente.`);
+            }
+            
+            // Función para agregar una nueva fila
+            function addNewRow() {
+                rowCount++;
+                const row = document.createElement('tr');
+                row.id = `row-${rowCount}`;
+                row.innerHTML = `
+                    <td>${rowCount}</td>
+                    <td>
+                        <input type="text" class="form-control time-input start-time" 
+                               placeholder="HH:MM" data-row="${rowCount}">
+                        <div class="error-message start-error" data-row="${rowCount}">Formato inválido</div>
+                    </td>
+                    <td>
+                        <input type="text" class="form-control time-input end-time" 
+                               placeholder="HH:MM" data-row="${rowCount}">
+                        <div class="error-message end-error" data-row="${rowCount}">Formato inválido</div>
+                    </td>
+                    <td>
+                        <span class="duration-display">--:--</span>
+                    </td>
+                    <td>
+                        <span class="minutes-display">--</span>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary calculate-row-btn" data-row="${rowCount}">
+                            <i class="fas fa-calculator"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger delete-btn" data-row="${rowCount}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+                
+                // Agregar event listeners a los nuevos inputs y botones
+                const startInput = row.querySelector('.start-time');
+                const endInput = row.querySelector('.end-time');
+                const calculateBtn = row.querySelector('.calculate-row-btn');
+                const deleteBtn = row.querySelector('.delete-btn');
+                
+                startInput.addEventListener('blur', validateTimeInput);
+                endInput.addEventListener('blur', validateTimeInput);
+                startInput.addEventListener('input', function() {
+                    if (this.value && endInput.value) {
+                        calculateRow(this.dataset.row);
+                    }
+                });
+                endInput.addEventListener('input', function() {
+                    if (this.value && startInput.value) {
+                        calculateRow(this.dataset.row);
+                    }
+                });
+                calculateBtn.addEventListener('click', function() {
+                    calculateRow(this.dataset.row);
+                });
+                deleteBtn.addEventListener('click', function() {
+                    deleteRow(this.dataset.row);
+                });
+                
+                updateSummary();
+            }
+            
+            // Función para validar formato de hora
+            function validateTimeInput(e) {
+                const input = e.target;
+                const rowId = input.dataset.row;
+                const errorElement = document.querySelector(`.${input.classList.contains('start-time') ? 'start-error' : 'end-error'}[data-row="${rowId}"]`);
+                
+                // Limpiar el valor - eliminar espacios y caracteres extraños
+                let cleanValue = input.value.trim().replace(/[^0-9:]/g, '');
+                
+                // Validar formato básico
+                const timeRegex = /^(\d{1,2}):(\d{1,2})(:(\d{1,2}))?$/;
+                
+                if (!timeRegex.test(cleanValue)) {
+                    input.classList.add('invalid-input');
+                    input.classList.remove('valid-input');
+                    errorElement.style.display = 'block';
+                    return false;
+                }
+                
+                // Separar en partes
+                const parts = cleanValue.split(':');
+                let hours = parseInt(parts[0]);
+                let minutes = parseInt(parts[1]);
+                let seconds = parts.length > 2 ? parseInt(parts[2]) : 0;
+                
+                // Validar rangos
+                if (hours < 0 || hours > 23 || 
+                    minutes < 0 || minutes > 59 || 
+                    seconds < 0 || seconds > 59) {
+                    input.classList.add('invalid-input');
+                    input.classList.remove('valid-input');
+                    errorElement.style.display = 'block';
+                    return false;
+                }
+                
+                // Formatear correctamente (agregar ceros a la izquierda si es necesario)
+                const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}${seconds > 0 ? `:${seconds.toString().padStart(2, '0')}` : ''}`;
+                input.value = formattedTime;
+                
+                input.classList.remove('invalid-input');
+                input.classList.add('valid-input');
+                errorElement.style.display = 'none';
+                return true;
+            }
+            
+            // Función para calcular una fila específica
+            function calculateRow(rowId) {
+                const row = document.getElementById(`row-${rowId}`);
+                const startInput = row.querySelector('.start-time');
+                const endInput = row.querySelector('.end-time');
+                const durationDisplay = row.querySelector('.duration-display');
+                const minutesDisplay = row.querySelector('.minutes-display');
+                
+                // Validar inputs
+                if (!validateTimeInput({target: startInput}) || !validateTimeInput({target: endInput})) {
+                    durationDisplay.textContent = '--:--';
+                    minutesDisplay.textContent = '--';
+                    return;
+                }
+                
+                // Convertir horas a minutos desde medianoche
+                const startMinutes = timeToMinutes(startInput.value);
+                const endMinutes = timeToMinutes(endInput.value);
+                
+                // Calcular diferencia (maneja el caso de cruce de medianoche)
+                let diffMinutes;
+                if (endMinutes >= startMinutes) {
+                    diffMinutes = endMinutes - startMinutes;
+                } else {
+                    // Si la hora final es menor, asumimos que es del día siguiente
+                    diffMinutes = (24 * 60 - startMinutes) + endMinutes;
+                }
+                
+                // Actualizar displays
+                const hours = Math.floor(diffMinutes / 60);
+                const minutes = diffMinutes % 60;
+                durationDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                minutesDisplay.textContent = diffMinutes;
+                
+                // Resaltar la fila calculada
+                row.classList.add('highlight-row');
+                setTimeout(() => {
+                    row.classList.remove('highlight-row');
+                }, 1000);
+                
+                // Actualizar totales
+                updateTotals();
+            }
+            
+            // Función para convertir tiempo a minutos
+            function timeToMinutes(timeStr) {
+                const parts = timeStr.split(':');
+                let hours = parseInt(parts[0]);
+                let minutes = parseInt(parts[1]);
+                let seconds = parts.length > 2 ? parseInt(parts[2]) : 0;
+                
+                return hours * 60 + minutes + seconds / 60;
+            }
+            
+            // Función para calcular todas las filas
+            function calculateAll() {
+                const rows = tableBody.querySelectorAll('tr');
+                let allValid = true;
+                
+                rows.forEach(row => {
+                    const rowId = row.id.split('-')[1];
+                    const startInput = row.querySelector('.start-time');
+                    const endInput = row.querySelector('.end-time');
+                    
+                    if (!startInput.value || !endInput.value) {
+                        allValid = false;
+                        return;
+                    }
+                    
+                    if (!validateTimeInput({target: startInput}) || !validateTimeInput({target: endInput})) {
+                        allValid = false;
+                        return;
+                    }
+                    
+                    calculateRow(rowId);
+                });
+                
+                if (!allValid) {
+                    alert('Por favor, complete y valide todas las filas antes de calcular.');
+                }
+            }
+            
+            // Función para eliminar una fila
+            function deleteRow(rowId) {
+                const row = document.getElementById(`row-${rowId}`);
+                row.remove();
+                
+                // Recalcular números de fila
+                const rows = tableBody.querySelectorAll('tr');
+                rowCount = 0;
+                rows.forEach((row, index) => {
+                    rowCount++;
+                    row.cells[0].textContent = rowCount;
+                    // Actualizar data-row attributes
+                    row.querySelector('.start-time').dataset.row = rowCount;
+                    row.querySelector('.end-time').dataset.row = rowCount;
+                    row.querySelector('.calculate-row-btn').dataset.row = rowCount;
+                    row.querySelector('.delete-btn').dataset.row = rowCount;
+                    row.id = `row-${rowCount}`;
+                });
+                
+                updateTotals();
+            }
+            
+            // Función para actualizar los totales
+            function updateTotals() {
+                totalDurationMinutes = 0;
+                let validRows = 0;
+                
+                const rows = tableBody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const minutesDisplay = row.querySelector('.minutes-display');
+                    if (minutesDisplay.textContent !== '--') {
+                        totalDurationMinutes += parseInt(minutesDisplay.textContent);
+                        validRows++;
+                    }
+                });
+                
+                // Actualizar resumen
+                updateSummary(validRows, totalDurationMinutes);
+            }
+            
+            // Función para actualizar el resumen
+            function updateSummary(validRows = 0, totalMinutes = 0) {
+                const totalHours = Math.floor(totalMinutes / 60);
+                const remainingMinutes = totalMinutes % 60;
+                
+                // Actualizar resumen
+                document.getElementById('summaryTotalRecords').textContent = rowCount;
+                document.getElementById('summaryTotalDuration').textContent = 
+                    `${totalHours.toString().padStart(2, '0')}:${remainingMinutes.toString().padStart(2, '0')}`;
+                document.getElementById('summaryTotalMinutes').textContent = totalMinutes;
+            }
+            
+            // Función para limpiar todo
+            function clearAll() {
+                if (confirm('¿Está seguro de que desea eliminar todos los datos?')) {
+                    tableBody.innerHTML = '';
+                    rowCount = 0;
+                    addNewRow();
+                    updateSummary();
+                }
+            }
+            
+            // Función para exportar a Excel
+            function exportToExcel() {
+                const data = [];
+                
+                // Encabezados
+                data.push(['N°', 'Hora Inicio', 'Hora Fin', 'Diferencia (hh:mm)', 'Diferencia (minutos)']);
+                
+                // Datos
+                const rows = tableBody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const rowNumber = row.cells[0].textContent;
+                    const startTime = row.querySelector('.start-time').value || '';
+                    const endTime = row.querySelector('.end-time').value || '';
+                    const duration = row.querySelector('.duration-display').textContent;
+                    const minutes = row.querySelector('.minutes-display').textContent;
+                    
+                    data.push([rowNumber, startTime, endTime, duration, minutes]);
+                });
+                
+                // Totales
+                data.push([]);
+                data.push(['TOTALES', '', '', 
+                    document.getElementById('summaryTotalDuration').textContent, 
+                    document.getElementById('summaryTotalMinutes').textContent]);
+                
+                // Crear libro de trabajo y hoja
+                const worksheet = XLSX.utils.aoa_to_sheet(data);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'Diferencias de Tiempo');
+                
+                // Exportar
+                XLSX.writeFile(workbook, 'diferencias_tiempo.xlsx');
+            }
+            
+            // Función para exportar a CSV
+            function exportToCSV() {
+                let csvContent = "N°,Hora Inicio,Hora Fin,Diferencia (hh:mm),Diferencia (minutos)\n";
+                
+                const rows = tableBody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const rowNumber = row.cells[0].textContent;
+                    const startTime = row.querySelector('.start-time').value || '';
+                    const endTime = row.querySelector('.end-time').value || '';
+                    const duration = row.querySelector('.duration-display').textContent;
+                    const minutes = row.querySelector('.minutes-display').textContent;
+                    
+                    csvContent += `"${rowNumber}","${startTime}","${endTime}","${duration}","${minutes}"\n`;
+                });
+                
+                // Agregar totales
+                csvContent += `\n"TOTALES","","","${document.getElementById('summaryTotalDuration').textContent}","${document.getElementById('summaryTotalMinutes').textContent}"\n`;
+                
+                // Descargar
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'diferencias_tiempo.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        });
+    </script>
+</body>
+</html>
