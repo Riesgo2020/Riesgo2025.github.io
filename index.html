@@ -51,7 +51,7 @@
         }
         
         .time-input {
-            max-width: 120px;
+            max-width: 140px;
         }
         
         .action-buttons .btn {
@@ -143,6 +143,26 @@
         .tab-content {
             margin-top: 15px;
         }
+        
+        .format-example {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        
+        .time-display {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 2px;
+        }
+        
+        .detection-info {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 8px;
+            margin-top: 5px;
+            font-size: 0.8rem;
+        }
     </style>
 </head>
 <body>
@@ -197,7 +217,11 @@
                             </div>
                         </div>
                         <div class="alert alert-info">
-                            <small><i class="fas fa-info-circle me-1"></i>Formato esperado: Dos columnas (Hora Inicio y Hora Fin) separadas por tabulaciones</small>
+                            <small>
+                                <i class="fas fa-info-circle me-1"></i>
+                                Formatos aceptados: 
+                                <span class="format-example">10:00 (se detecta PM automáticamente), 10:00 PM, 22:00</span>
+                            </small>
                         </div>
                     </div>
                     
@@ -236,7 +260,9 @@
                     <!-- Ingreso Manual -->
                     <div class="tab-pane fade" id="manual" role="tabpanel">
                         <div class="alert alert-info">
-                            <i class="fas fa-info-circle me-2"></i>Usa la tabla de abajo para ingresar datos manualmente
+                            <i class="fas fa-info-circle me-2"></i>
+                            Usa la tabla de abajo para ingresar datos manualmente. 
+                            <strong>La calculadora detecta automáticamente si las horas son PM</strong>
                         </div>
                     </div>
                 </div>
@@ -258,7 +284,12 @@
             </div>
             <div class="card-body">
                 <div class="alert alert-info">
-                    <small><i class="fas fa-info-circle me-1"></i>Formatos aceptados: HH:MM, HH:MM:SS, H:MM, H:MM:SS</small>
+                    <small>
+                        <i class="fas fa-info-circle me-1"></i>
+                        <strong>Detección automática:</strong> Si la hora final es menor que la inicial, 
+                        se asume que la hora inicial es PM y la final es AM del día siguiente.
+                        <span class="format-example">Ej: 10:00 → 2:30 = 10:00 PM → 2:30 AM (4h 30min)</span>
+                    </small>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-hover" id="timeTable">
@@ -380,6 +411,69 @@
                 }
             });
             
+            // Función para detectar automáticamente si es PM basado en el contexto
+            function detectTimeFormat(startTime, endTime) {
+                const start24 = convertTo24Hour(startTime);
+                const end24 = convertTo24Hour(endTime);
+                
+                const startMinutes = timeToMinutes(start24);
+                const endMinutes = timeToMinutes(end24);
+                
+                // Si la hora final es menor que la inicial, asumimos que la inicial es PM
+                if (endMinutes < startMinutes) {
+                    return {
+                        start: convertTo24Hour(startTime + ' PM'),
+                        end: convertTo24Hour(endTime + ' AM'),
+                        detection: 'Se detectó: ' + startTime + ' PM → ' + endTime + ' AM'
+                    };
+                }
+                
+                return {
+                    start: start24,
+                    end: end24,
+                    detection: 'Formato 24h: ' + start24 + ' → ' + end24
+                };
+            }
+            
+            // Función para convertir formato 12h a 24h
+            function convertTo24Hour(timeStr) {
+                if (!timeStr) return '';
+                
+                let cleanTime = timeStr.trim().toUpperCase();
+                
+                // Si ya está en formato 24h, retornar tal cual
+                if (!cleanTime.includes('AM') && !cleanTime.includes('PM')) {
+                    return cleanTime;
+                }
+                
+                // Extraer componentes
+                const timeParts = cleanTime.split(/(AM|PM)/);
+                const timeValue = timeParts[0].trim();
+                const period = timeParts[1];
+                
+                // Separar horas, minutos y segundos
+                const timeComponents = timeValue.split(':');
+                let hours = parseInt(timeComponents[0]);
+                const minutes = timeComponents[1] ? parseInt(timeComponents[1]) : 0;
+                const seconds = timeComponents[2] ? parseInt(timeComponents[2]) : 0;
+                
+                // Convertir a formato 24h
+                if (period === 'PM' && hours < 12) {
+                    hours += 12;
+                } else if (period === 'AM' && hours === 12) {
+                    hours = 0;
+                }
+                
+                // Formatear a 2 dígitos
+                const formattedHours = hours.toString().padStart(2, '0');
+                const formattedMinutes = minutes.toString().padStart(2, '0');
+                const formattedSeconds = seconds.toString().padStart(2, '0');
+                
+                return seconds > 0 ? 
+                    `${formattedHours}:${formattedMinutes}:${formattedSeconds}` : 
+                    `${formattedHours}:${formattedMinutes}`;
+            }
+            
             // Función para procesar datos pegados desde Excel
             function processPastedData() {
                 const pastedText = pasteInput.value.trim();
@@ -485,7 +579,7 @@
                     const seconds = totalSeconds % 60;
                     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                 } else if (typeof value === 'string') {
-                    // Limpiar y formatear el string
+                    // Mantener el formato original para que el usuario lo vea
                     return value.toString().trim();
                 } else if (value instanceof Date) {
                     // Si es un objeto Date
@@ -565,13 +659,15 @@
                     <td>${rowCount}</td>
                     <td>
                         <input type="text" class="form-control time-input start-time" 
-                               placeholder="HH:MM" data-row="${rowCount}">
+                               placeholder="10:00" data-row="${rowCount}">
                         <div class="error-message start-error" data-row="${rowCount}">Formato inválido</div>
+                        <div class="time-display start-display" data-row="${rowCount}"></div>
                     </td>
                     <td>
                         <input type="text" class="form-control time-input end-time" 
-                               placeholder="HH:MM" data-row="${rowCount}">
+                               placeholder="2:30" data-row="${rowCount}">
                         <div class="error-message end-error" data-row="${rowCount}">Formato inválido</div>
+                        <div class="time-display end-display" data-row="${rowCount}"></div>
                     </td>
                     <td>
                         <span class="duration-display">--:--</span>
@@ -624,38 +720,19 @@
                 const rowId = input.dataset.row;
                 const errorElement = document.querySelector(`.${input.classList.contains('start-time') ? 'start-error' : 'end-error'}[data-row="${rowId}"]`);
                 
-                // Limpiar el valor - eliminar espacios y caracteres extraños
-                let cleanValue = input.value.trim().replace(/[^0-9:]/g, '');
+                // Limpiar el valor
+                let cleanValue = input.value.trim().toUpperCase();
                 
-                // Validar formato básico
-                const timeRegex = /^(\d{1,2}):(\d{1,2})(:(\d{1,2}))?$/;
+                // Validar formatos (12h y 24h)
+                const time24Regex = /^(\d{1,2}):(\d{1,2})(:(\d{1,2}))?$/;
+                const time12Regex = /^(\d{1,2}):(\d{1,2})(:(\d{1,2}))?\s*(AM|PM)$/;
                 
-                if (!timeRegex.test(cleanValue)) {
+                if (!time24Regex.test(cleanValue) && !time12Regex.test(cleanValue)) {
                     input.classList.add('invalid-input');
                     input.classList.remove('valid-input');
                     errorElement.style.display = 'block';
                     return false;
                 }
-                
-                // Separar en partes
-                const parts = cleanValue.split(':');
-                let hours = parseInt(parts[0]);
-                let minutes = parseInt(parts[1]);
-                let seconds = parts.length > 2 ? parseInt(parts[2]) : 0;
-                
-                // Validar rangos
-                if (hours < 0 || hours > 23 || 
-                    minutes < 0 || minutes > 59 || 
-                    seconds < 0 || seconds > 59) {
-                    input.classList.add('invalid-input');
-                    input.classList.remove('valid-input');
-                    errorElement.style.display = 'block';
-                    return false;
-                }
-                
-                // Formatear correctamente (agregar ceros a la izquierda si es necesario)
-                const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}${seconds > 0 ? `:${seconds.toString().padStart(2, '0')}` : ''}`;
-                input.value = formattedTime;
                 
                 input.classList.remove('invalid-input');
                 input.classList.add('valid-input');
@@ -665,24 +742,35 @@
             
             // Función para calcular una fila específica
             function calculateRow(rowId) {
-                const row = document.getElementById(`row-${rowId}`);
+                const row = document.getElementById(`row-${rowCount}`);
                 const startInput = row.querySelector('.start-time');
                 const endInput = row.querySelector('.end-time');
                 const durationDisplay = row.querySelector('.duration-display');
                 const minutesDisplay = row.querySelector('.minutes-display');
+                const startDisplay = row.querySelector('.start-display');
+                const endDisplay = row.querySelector('.end-display');
                 
                 // Validar inputs
                 if (!validateTimeInput({target: startInput}) || !validateTimeInput({target: endInput})) {
                     durationDisplay.textContent = '--:--';
                     minutesDisplay.textContent = '--';
+                    startDisplay.textContent = '';
+                    endDisplay.textContent = '';
                     return;
                 }
                 
-                // Convertir horas a minutos desde medianoche
-                const startMinutes = timeToMinutes(startInput.value);
-                const endMinutes = timeToMinutes(endInput.value);
+                // Detectar automáticamente el formato
+                const detectedTimes = detectTimeFormat(startInput.value, endInput.value);
                 
-                // Calcular diferencia (maneja el caso de cruce de medianoche)
+                // Mostrar la interpretación
+                startDisplay.innerHTML = `<small>${detectedTimes.start}</small>`;
+                endDisplay.innerHTML = `<small>${detectedTimes.end}</small>`;
+                
+                // Convertir horas a minutos desde medianoche
+                const startMinutes = timeToMinutes(detectedTimes.start);
+                const endMinutes = timeToMinutes(detectedTimes.end);
+                
+                // Calcular diferencia
                 let diffMinutes;
                 if (endMinutes >= startMinutes) {
                     diffMinutes = endMinutes - startMinutes;
@@ -691,11 +779,14 @@
                     diffMinutes = (24 * 60 - startMinutes) + endMinutes;
                 }
                 
+                // Asegurarnos de que la diferencia no sea negativa
+                diffMinutes = Math.abs(diffMinutes);
+                
                 // Actualizar displays
                 const hours = Math.floor(diffMinutes / 60);
-                const minutes = diffMinutes % 60;
+                const minutes = Math.round(diffMinutes % 60);
                 durationDisplay.textContent = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                minutesDisplay.textContent = diffMinutes;
+                minutesDisplay.textContent = Math.round(diffMinutes);
                 
                 // Resaltar la fila calculada
                 row.classList.add('highlight-row');
